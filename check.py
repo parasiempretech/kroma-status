@@ -3,6 +3,7 @@ import base64
 import json
 import os
 import time
+import subprocess
 import urllib.error
 import urllib.request
 from datetime import datetime, timezone
@@ -11,15 +12,24 @@ URL = 'https://salmon-sandpiper-345563.hostingersite.com/api/agenda?op=health'
 TITLE = 'KROMA necesita revisión'
 
 
+def public_read(url):
+    result = subprocess.run(['curl', '--ipv4', '--fail', '--silent', '--show-error', '--location',
+        '--proto', '=https', '--proto-redir', '=https', '--max-redirs', '3',
+        '--connect-timeout', '8', '--max-time', '15', url], capture_output=True, timeout=20)
+    if result.returncode:
+        print('Comprobación pública falló:', 'agenda' if '/api/' in url else 'web', 'curl', result.returncode)
+        raise RuntimeError('Public endpoint unavailable')
+    return result.stdout
+
+
 def healthy():
     try:
-        with urllib.request.urlopen(URL, timeout=10) as response:
-            data = json.load(response)
+        data = json.loads(public_read(URL))
         if data.get('ok') is not True or data.get('backup', {}).get('state') != 'ok':
+            print('La agenda o el backup requiere revisión')
             return False
-        with urllib.request.urlopen(URL.split('/api/')[0] + '/', timeout=10) as response:
-            return response.status == 200 and b'id="root"' in response.read(100000)
-    except (OSError, ValueError):
+        return b'id="root"' in public_read(URL.split('/api/')[0] + '/')
+    except (OSError, ValueError, RuntimeError, subprocess.TimeoutExpired):
         return False
 
 
