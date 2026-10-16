@@ -15,7 +15,10 @@ def healthy():
     try:
         with urllib.request.urlopen(URL, timeout=10) as response:
             data = json.load(response)
-        return data.get('ok') is True and data.get('backup', {}).get('state') == 'ok'
+        if data.get('ok') is not True or data.get('backup', {}).get('state') != 'ok':
+            return False
+        with urllib.request.urlopen(URL.split('/api/')[0] + '/', timeout=10) as response:
+            return response.status == 200 and b'id="root"' in response.read(100000)
     except (OSError, ValueError):
         return False
 
