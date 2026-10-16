@@ -1,0 +1,25 @@
+name: Estado de KROMA
+on:
+  schedule:
+    - cron: '3-59/5 * * * *'
+  workflow_dispatch:
+  push:
+    paths: ['check.py', '.github/workflows/monitor.yml']
+permissions:
+  contents: write
+  issues: write
+concurrency:
+  group: kroma-status
+  cancel-in-progress: false
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Comprobar web, agenda y backup
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 check.py
